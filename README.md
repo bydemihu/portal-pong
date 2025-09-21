@@ -7,7 +7,7 @@ Click on the image below to watch a showcase!
 [![Watch the video](https://img.youtube.com/vi/zV2nIdfLm1U/maxresdefault.jpg)](https://youtu.be/zV2nIdfLm1U)
 
 ## Inspiration
-Portal Pong was inspired by interactive public art installations such as Portal (NYC-Dublin) and immersive physical games such as projection-mapped rock climbing. 
+Portal Pong was inspired by interactive public art installations such as Portal (NYC-Dublin) and immersive physical games such as projection-mapped rock climbing. We were inspired by the public nature of art installations and how they tranformed the built environment into opportunities for entertainment. We were also inspired by the creative applications of physical interactivity for digital media, like alternative game controllers and hand and body-based gestures--the blending of physical and digital allows for exciting developments beyond traditional models of interaction like keyboards.
 
 ## What it does
 Portal Pong links together two public street-level camera feeds from different locations, putting the videos side by side like a portal into another place. It detects and tracks people's hands from the camera feeds. People from one location can then interact with people in the other location by playing pong, using their hands to hit a digital ball from one side to the other, allowing for a friendly physical game that transcends space. 
