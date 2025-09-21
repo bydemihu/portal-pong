@@ -56,6 +56,7 @@
 			position: relative;
 			z-index: 2;
 			display: flex;
+			flex-direction: column;
 			justify-content: center;
 			align-items: center;
 		}
@@ -135,21 +136,21 @@
 			width: auto;
 			height: 100%;
 			top: 0px;
-			z-index:2;
+			z-index: 2;
 			display: block;
 		}
 
 		.spike-strip.left {
-			left:-4px;
+			left: -4px;
 		}
 
 		.spike-strip.right {
 			right: -4px;
 			transform: scaleX(-1);
-			
+
 		}
 
-		#wave {
+		h1 {
 			color: white;
 			font-family: "Sixtyfour", sans-serif;
 			filter: drop-shadow(4px 4px 0px var(--pong-navy));
@@ -157,11 +158,40 @@
 			font-variation-settings:
 				"BLED" 0,
 				"SCAN" 24;
+			position: static;
+			left: auto;
+			right: auto;
+		}
+
+		p {
+			color: white;
+			font-family: "Sixtyfour", sans-serif;
+			filter: drop-shadow(4px 4px 0px var(--pong-navy));
+			font-size: 16px;
+			font-variation-settings:
+				"BLED" 0,
+				"SCAN" 12;
+			position: static;
+			left: auto;
+			right: auto;
+		}
+
+		#wave {
 			position: absolute;
 			top: 15px;
 			left: auto;
-			right:auto;
+			right: auto;
 		}
+
+		.center-line {
+			position: absolute;
+			left: 50%;
+			top: 120px;
+			bottom: 0;
+			width: 4px;
+			height: 75%;
+		}
+
 	</style>
 </head>
 
@@ -172,13 +202,22 @@
 
 		<div class="container">
 			<img src="spikestrip.svg" class="spike-strip left">
-  		<img src="spikestrip.svg" class="spike-strip right">
+			<img src="spikestrip.svg" class="spike-strip right">
 
 			<h1 id="wave">PORTAL PONG!</h1>
-		
-		</div>
-		
+			<p id="instruction" style="position: absolute; top:60px;"> high-five the other city's player to start! </p>
 
+			<h1 id="gameover" style="margin-bottom:40px; z-index: 2;">GAME OVER</h1>
+			<p id="gameover2" style="z-index: 2;"> winning city: </p>
+			<h1 id="winner" style="font-size: 96px; margin-top: 10px;margin-bottom:80px; color: var(--pong-green)">
+				SHANGHAI</h1>
+
+			<svg id = "centerline" class="center-line" width="4" height="100%" style="z-index:1">
+				<line x1="1" y1="0" x2="1" y2="100%" stroke="white" stroke-width="10" stroke-linecap="round"
+					stroke-dasharray="10 20" />
+			</svg>
+
+		</div>
 		<div class="containercontainer">
 			<div id="leftcontainer" class="container" style="width: 50%">
 				<div class="content">
@@ -187,7 +226,7 @@
 						<span id="away-city" class="city">NEW YORK</span>
 					</div>
 					<div class="right-side">
-						<span id="away-score" class="score">5</span>
+						<span id="away-score" class="score">0</span>
 					</div>
 				</div>
 
@@ -207,6 +246,6 @@
 		</div>
 	</div>
 </body>
-<script src = "portalpong.js"></script>
+<script src="portalpong.js"></script>
 
 </html>
