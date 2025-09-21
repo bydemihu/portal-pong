@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Portal Pong</title>
+
+  <!-- Overlay font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sixtyfour:SCAN@18&display=swap" rel="stylesheet">
+
+  <style>
+    :root { --bg:#0b0f15; --fg:#e6f0ff; --dim:#7c8aa5; --accent:#67e8f9; --accent2:#a78bfa; }
+
+    /* ===== your existing styles (kept) ===== */
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;overflow:hidden}
+    .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0b0f15;border:0;padding:12px 16px;border-radius:12px;font-weight:700;cursor:pointer}
+    .btn.secondary{background:rgba(255,255,255,.08);color:var(--fg);border:1px solid rgba(255,255,255,.12)}
+    .card{background:rgba(15,20,28,.85);border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 30px rgba(0,0,0,.45);border-radius:20px;padding:20px}
+    .hidden{display:none!important}
+
+    /* We want lobby/game to fill the #gameScreen stage, not the viewport */
+    #lobby{position:absolute;inset:0;display:grid;place-items:center}
+    .lobby-inner{width:min(900px,92vw);display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .title{grid-column:1/-1;text-align:center}
+    .rooms{display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow:auto}
+    .room{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+    .room span.small{font-size:12px;color:var(--dim)}
+    .row{display:flex;gap:10px;align-items:center}
+    input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--fg)}
+
+    #gamewrap{position:absolute;inset:0;display:none}
+    #gameCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+    #hud{position:fixed;left:12px;top:10px;display:flex;gap:10px;align-items:center;z-index:4}
+    .chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:8px 12px;border-radius:999px;font-size:13px}
+    #scoreHud{position:fixed;right:12px;top:10px;z-index:4;font-weight:800;font-size:clamp(18px,3.2vw,28px);padding:8px 14px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+    #help{position:fixed;left:50%;transform:translateX(-50%);bottom:10px;z-index:4;color:var(--dim);font-size:13px;text-align:center;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10)}
+    #overlay{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5}
+    #overlay .panel{pointer-events:auto}
+
+    #countdown{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:12vw;font-weight:900;color:rgba(255,255,255,.9);text-shadow:0 12px 40px rgba(0,0,0,.6);display:none;z-index:6}
+
+    /* ===== PORTAL PONG overlay (your design), confined to #gameScreen ===== */
+    /* custom colors **/
+    :root {
+      --pong-navy: #1C252A;
+      --pong-red: #FF605E;
+      --pong-green: #65F0C4;
+      --pong-blue: #25AAE6;
+    }
+
+    /* Stage that enforces 16:9 and centers content */
+    #gameScreen {
+      position:relative;
+      width:100vw; height:100vh;
+      display:flex; justify-content:center; align-items:center;
+      background:#000; /* underlay for videos */
+    }
+    /* Letterboxed 16:9 inner area where everything lives (videos, canvas, overlay) */
+    #stage16x9 {
+      position:relative;
+      width:100%;
+      height:100%;
+      max-width:calc(100vh * 16 / 9);
+      max-height:calc(100vw * 9 / 16);
+      background-color:black;
+      box-sizing:border-box;
+      padding:20px;
+      overflow:hidden;
+      --pp-bottom-h: 15%; 
+    }
+
+    #wave { position:absolute; top:15px; left:50%; transform:translateX(-50%); }
+
+    /* Overlay pieces live inside #stage16x9 */
+    .pp-container {
+      border: 4px solid white;
+      border-radius: 4px;
+      background-color: transparent;
+      margin: 20px;
+      height: 82.5%;
+      box-sizing: border-box;
+      position: absolute;
+      inset: 0 0 var(--pp-bottom-h) 0;
+      z-index: 3; /* above canvas (2), below HUD (4/5) */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      pointer-events:none; /* purely presentational */
+    }
+    .pp-gradient { position:absolute; bottom:0; width:50%; height:150%; pointer-events:none; z-index:1; }
+    #left-gradient { right:0; background:linear-gradient(to top, rgba(37,170,230,1) 0%, rgba(37,170,230,.7) 5%, rgba(37,170,230,.1) 20%, rgba(37,170,230,0) 50%); }
+    #right-gradient{ left:0; background:linear-gradient(to top, rgba(101,240,196,1) 0%, rgba(101,240,196,.7) 5%, rgba(101,240,196,.1) 20%, rgba(101,240,196,0) 50%); }
+
+    .pp-strip{ position:absolute; width:auto; height:100%; top:0; z-index:3; display:block; pointer-events:none; }
+    .pp-strip.left{ left:-4px; }
+    .pp-strip.right{ right:-4px; transform:scaleX(-1); }
+
+    .pp-centerline{ position:absolute; left:50%; top:120px; bottom:0; width:4px; height:75%; z-index:1; }
+
+    .pp-h1, .pp-p, .pp-city, .pp-score {
+      color:white; font-family:"Sixtyfour", sans-serif; filter:drop-shadow(4px 4px 0px var(--pong-navy));
+    }
+    .pp-h1{ font-size:24px; font-variation-settings: "BLED" 0, "SCAN" 24; }
+    .pp-p { font-size:16px; font-variation-settings: "BLED" 0, "SCAN" 12; }
+    .pp-city,.pp-score{ font-size:24px; font-variation-settings:"BLED" 0,"SCAN" 30; }
+
+    .pp-pin{ margin-top:-10px; width:36px; height:36px; display:inline-block; filter:drop-shadow(4px 4px 0px var(--pong-navy));}
+
+    .pp-bottom {
+      position:absolute; left:0; right:0; bottom:0;
+      display:flex; gap:20px; box-sizing:border-box; height:var(--pp-bottom-h); z-index:3; pointer-events:none;
+      padding:20px;
+    }
+    .pp-card {
+      border:4px solid white; border-radius:4px; background:transparent; padding:20px; width:50%;
+      display:flex; align-items:center; justify-content:center; pointer-events:none;
+    }
+    .pp-content{ display:flex; justify-content:space-between; align-items:center; width:100%; margin-top:6px; }
+    .left-side,.right-side{ display:flex; align-items:center; gap:20px; }
+
+    /* Big winner text */
+    #winner{ font-size:96px; margin-top:10px; margin-bottom:80px; color:var(--pong-green) }
+  </style>
+</head>
+<body>
+
+  <!-- NEW: 16:9 stage wrapper -->
+  <div id="gameScreen">
+    <div id="stage16x9">
+
+      <!-- Your existing Lobby (now fills the stage) -->
+      <section id="lobby">
+        <div class="lobby-inner">
+          <div class="title">
+            <!-- <h1>Portal Pong</h1> -->
+            <h1 style="visibility:hidden">Portal Pong</h1> <!-- keep space for wave -->
+            <p class="small" style="color:var(--dim); visibility: hidden;">Pick or create a room. Each room holds up to 2 players.</p>
+          </div>
+
+          <div class="card">
+            <h3>Rooms</h3>
+            <div id="rooms" class="rooms"></div>
+            <div class="row" style="margin-top:10px">
+              <input id="newRoomName" type="text" placeholder="Create room name…" />
+              <button id="createRoomBtn" class="btn">Create / Join</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>How it works</h3>
+            <ol style="margin-top:0.5rem;color:var(--dim);line-height:1.5">
+              <li>Join a room. First in is <b>P1</b>, second is <b>P2</b>.</li>
+              <li>Both cameras will appear. Move your paddle (wrist→middle-tip) to the <b>center line</b> to “high-five”.</li>
+              <li>When both are centered, a <b>3-2-1</b> starts. First to <b>5</b> goals wins.</li>
+            </ol>
+            <div class="row" style="margin-top:10px">
+              <span class="chip" id="sigStatus">Signaling: —</span>
+              <span class="chip" id="rtcStatus">RTC: —</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Your existing Game section (fills stage) -->
+      <section id="gamewrap">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- <div id="hud" class="hidden">
+          <span class="chip" id="roleChip">Role: —</span>
+          <span class="chip" id="statusChip">Loading…</span>
+          <button id="toggleDebug" class="btn secondary">Debug</button>
+          <button id="pauseBtn" class="btn secondary">Exit</button>
+        </div>
+        <div id="scoreHud" class="hidden">0 : 0</div>
+        <div id="help" class="hidden">High-five at the center line to start. P=pause, D=debug, F=fullscreen.</div> -->
+
+        <div id="overlay">
+          <div class="panel card" id="waitingPanel">
+            <h2>Waiting for other city…</h2>
+            <p class="small" style="color:var(--dim)">Share your room name with a friend. This page will auto-start when they connect.</p>
+          </div>
+        </div>
+
+        <div id="countdown">3</div>
+      </section>
+
+      <!-- ===== YOUR OVERLAY, integrated ===== -->
+      <!-- Gradients behind everything but videos -->
+      <div id="left-gradient" class="pp-gradient"></div>
+      <div id="right-gradient" class="pp-gradient"></div>
+
+      <!-- Overlay frame + title + messages -->
+      <div class="pp-container">
+        <!-- side spike strips -->
+        <img src="/spikestrip.svg" class="pp-strip left" alt="" />
+        <img src="/spikestrip.svg" class="pp-strip right" alt="" />
+
+        <!-- Wavy title & instruction -->
+        <h1 id="wave" class="pp-h1">PORTAL PONG!</h1>
+        <p id="instruction" class="pp-p" style="position:absolute; top:60px;">high-five the other city's player to start!</p>
+
+        <!-- Game over / winner (hidden until end) -->
+        <h1 id="gameover" class="pp-h1 hidden" style="margin-bottom:40px;">GAME OVER</h1>
+        <p id="gameover2" class="pp-p hidden">winning city:</p>
+        <h1 id="winner" class="pp-h1 hidden"></h1>
+
+        <!-- center dotted line (below canvas) -->
+        <svg id="centerline" class="pp-centerline" width="4" height="100%">
+          <line x1="1" y1="0" x2="1" y2="100%" stroke="white" stroke-width="10" stroke-linecap="round" stroke-dasharray="10 20" />
+        </svg>
+      </div>
+
+      <!-- Bottom scoreboard -->
+      <div class="pp-bottom">
+        <div id="leftcontainer" class="pp-card">
+          <div class="pp-content">
+            <div class="left-side">
+              <img src="/pin.svg" class="pp-pin" alt="" />
+              <span id="away-city" class="pp-city">SHANGHAI</span>
+            </div>
+            <div class="right-side">
+              <span id="away-score" class="pp-score">0</span>
+            </div>
+          </div>
+        </div>
+        <div id="rightcontainer" class="pp-card">
+          <div class="pp-content">
+            <div class="left-side">
+              <span id="home-score" class="pp-score">0</span>
+            </div>
+            <div class="right-side">
+              <span id="home-city" class="pp-city">NEW YORK</span>
+              <img src="/pin.svg" class="pp-pin" alt="" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ===== end overlay ===== -->
+
+    </div>
+  </div>
+
+  <!-- <pre id="log" style="position:fixed;left:12px;bottom:12px;z-index:6;background:rgba(0,0,0,.6);color:#fff;font:12px/1.35 ui-monospace,monospace;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px;max-width:48vw;max-height:28vh;overflow:auto;white-space:pre-wrap"></pre> -->
+
+  <!-- load your wavy title JS (place file in /public as /portalpong.js) -->
+  <script src="/portalpong.js" defer></script>
+
+  <!-- your game -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
