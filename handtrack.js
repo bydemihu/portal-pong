@@ -121,3 +121,63 @@ Composite.add(engine.world, [boxA, boxB, ground]);
 Render.run(render);
 var runner = Runner.create();
 Runner.run(runner, engine);
+
+
+// animation helper 
+function makeStarburst(x, y, options = {}) {
+			return new Promise(resolve => {
+				const numLines = options.numLines || 8;
+				const maxDistance = options.maxDistance || 40;
+				const maxLength = options.maxLength || 15;
+				const duration = options.duration || 250; // ms
+				const color = options.color || "white";
+				const lineWidth = options.lineWidth || 8;
+
+				let startTime = null;
+
+				function draw(progress) {
+					ctx.strokeStyle = "white";
+					ctx.lineWidth = 4;
+					ctx.lineCap = "round";
+
+					// center of the line moves outward
+					const centerDist = maxDistance * progress;
+
+					// line length follows a parabola: 0 → max → 0
+					const lineLength = maxLength * 4 * progress * (1 - progress);
+
+					for (let i = 0; i < numLines; i++) {
+						const angle = (i / numLines) * Math.PI * 2;
+
+						const dist1 = centerDist - lineLength / 2;
+						const dist2 = centerDist + lineLength / 2;
+
+						const x1 = cx + Math.cos(angle) * dist1;
+						const y1 = cy + Math.sin(angle) * dist1;
+						const x2 = cx + Math.cos(angle) * dist2;
+						const y2 = cy + Math.sin(angle) * dist2;
+
+						ctx.beginPath();
+						ctx.moveTo(x1, y1);
+						ctx.lineTo(x2, y2);
+						ctx.stroke();
+					}
+				}
+
+				function animate(timestamp) {
+					if (!startTime) startTime = timestamp;
+					const elapsed = timestamp - startTime;
+					const progress = Math.min(elapsed / duration, 1);
+
+					draw(progress);
+
+					if (progress < 1) {
+						requestAnimationFrame(animate);
+					} else {
+						resolve(); // animation done
+					}
+				}
+
+				requestAnimationFrame(animate);
+			});
+		}
